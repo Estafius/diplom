@@ -2,9 +2,11 @@ import time
 from urllib.parse import urlparse
 import requests
 import json
+import backoff
 
 
 def get_my_friend_list(user_id, params):
+    # get list of friends of the incoming user
     response_my_friends_list = []
     params['user_id'] = user_id
     response = requests.get(
@@ -19,43 +21,24 @@ def get_my_friend_list(user_id, params):
     return response_my_friends_list
 
 
-def get_my_groups_list(user_id, params):
-    params['user_id'] = user_id
-    my_groups = requests.get(
-        'https://api.vk.com/method/groups.get',
-        params).json()['response']['items']
-    return my_groups
-
-
-def get_my_friends_groups_list(my_friends_list, params):
-    response_my_friends_groups = []
-    time.sleep(2)
-    for friend in my_friends_list:
-        params['user_id'] = friend
-        print(friend)
-        try:
-            time.sleep(1)
-            response_my_friends = requests.get(
-                'https://api.vk.com/method/groups.get', params)
-            response_my_friends_groups.append(
-                response_my_friends.json()['response']['items'])
-            print('exception_first= ', response_my_friends)
-        except:
-            try:
-                time.sleep(5)
-                response_my_friends = requests.get(
-                    'https://api.vk.com/method/groups.get', params)
-                response_my_friends_groups.append(
-                    response_my_friends.json()['response']['items'])
-                print('exception_second= ', response_my_friends)
-            except:
-                print('pass_exception')
-                pass
-
-    return response_my_friends_groups
+@backoff.on_exception(backoff.expo,
+                      requests.exceptions.RequestException, max_tries=5000)
+def get_group_list(user_list, params):
+    # get groups of incoming lsit of ids/id
+    response_groups = []
+    for user in user_list:
+        time.sleep(3)
+        print(user)
+        params['user_id'] = user
+        group_list = requests.get('https://api.vk.com/method/groups.get',
+                                  params)
+        response_groups.append(group_list.json()['response']['items'])
+    return response_groups
 
 
 def get_my_unique_groups_list(my_friends_groups_list, my_groups, params):
+    # compare the list of groups of Oleg Blokhin in
+    # comparasion with list of groups of his friends
     my_unique_group_list = []
     end_result_file_list = []
     my_friends_groups_list = sum(my_friends_groups_list, [])
@@ -99,12 +82,12 @@ def main():
         params = {'access_token': access_token,
                   'v': VERSION,
                   }
-        my_groups = get_my_groups_list(user_id, params)
+        my_groups = get_group_list([user_id], params)
         print(my_groups)
         params = {'access_token': access_token,
                   'v': VERSION,
                   }
-        my_friends_groups_list = get_my_friends_groups_list(
+        my_friends_groups_list = get_group_list(
             my_friends_list, params)
         print(my_friends_groups_list)
         params = {'access_token': access_token,
