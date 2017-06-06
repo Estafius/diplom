@@ -21,10 +21,10 @@ def get_my_friend_list(user_id, params):
     return response_my_friends_list
 
 
-@backoff.on_exception(backoff.expo,
+@backoff.on_exception(backoff.expo, 
                       requests.exceptions.RequestException, max_tries=5000)
 def get_group_list(user_list, params):
-    # get groups of incoming lsit of ids/id
+    # get groups of incoming list of ids/id
     response_groups = []
     for user in user_list:
         time.sleep(3)
@@ -38,14 +38,10 @@ def get_group_list(user_list, params):
 
 def get_my_unique_groups_list(my_friends_groups_list, my_groups, params):
     # compare the list of groups of Oleg Blokhin in
-    # comparasion with list of groups of his friends
-    my_unique_group_list = []
+    # comparison with list of groups of his friends
     end_result_file_list = []
-    my_friends_groups_list = sum(my_friends_groups_list, [])
-    for group_name in my_groups:
-        print(group_name)
-        if group_name not in my_friends_groups_list:
-            my_unique_group_list.append(group_name)
+    my_groups = sum(my_groups, [])
+    my_unique_group_list = list(set(my_groups) - set(my_friends_groups_list))
     print(my_unique_group_list)
     for group in my_unique_group_list:
                 params['group_ids'] = group
@@ -63,7 +59,8 @@ def get_my_unique_groups_list(my_friends_groups_list, my_groups, params):
 
 
 def main():
-        user_id = 5030613
+        print('Введите id пользователя - пример (5030613)')
+        user_id = input()
         VERSION = '5.63'
         token_url = 'https://oauth.vk.com/blank.html#' \
                     'access_token=d13e692be6959' \
@@ -82,7 +79,8 @@ def main():
         params = {'access_token': access_token,
                   'v': VERSION,
                   }
-        my_groups = get_group_list([user_id], params)
+        user_list = [user_id]
+        my_groups = get_group_list(user_list, params)
         print(my_groups)
         params = {'access_token': access_token,
                   'v': VERSION,
@@ -90,9 +88,8 @@ def main():
         my_friends_groups_list = get_group_list(
             my_friends_list, params)
         print(my_friends_groups_list)
-        params = {'access_token': access_token,
-                  'v': VERSION,
-                  }
+        my_friends_groups_list = list(set(my_friends_groups_list))
+        print(my_friends_groups_list)
         get_my_unique_groups_list(my_friends_groups_list, my_groups, params)
 
 main()
